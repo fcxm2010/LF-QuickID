@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from lf_quickid.core.face_detector import FaceAnalyzerUnavailable, InsightFaceAnalyzer
 from lf_quickid.core.id_photo_cropper import CropPreset, STANDARD_PRESETS, collect_input_images, crop_one_id_photo, mm_to_pixels
+from lf_quickid.ui.theme import build_hero, field_label, section_title
 
 
 class CropWorkerSignals(QObject):
@@ -78,15 +79,20 @@ class IdPhotoPage(QWidget):
         self._thread_pool = QThreadPool.globalInstance()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 26, 28, 26)
-        layout.setSpacing(18)
+        layout.setContentsMargins(30, 28, 30, 28)
+        layout.setSpacing(16)
 
-        header = QLabel("证件照裁切")
-        header.setObjectName("pageTitle")
-        description = QLabel("选择图片或目录后，程序会在本机识别人脸位置，并按标准或自定义尺寸批量裁切。")
-        description.setObjectName("pageDescription")
+        hero = build_hero("证件照裁切", "选择图片或目录后，程序会在本机识别人脸位置，并按标准规格或自定义尺寸批量裁切、写入 DPI。")
+
+        input_card = QFrame()
+        input_card.setObjectName("inputCard")
+        input_layout = QVBoxLayout(input_card)
+        input_layout.setContentsMargins(18, 16, 18, 18)
+        input_layout.setSpacing(10)
+        input_layout.addWidget(section_title("选择输入与输出"))
 
         input_row = QHBoxLayout()
+        input_row.setSpacing(10)
         self.input_edit = QLineEdit()
         self.input_edit.setPlaceholderText("请选择图片文件或照片目录")
         self.file_button = QPushButton("选择图片")
@@ -96,11 +102,14 @@ class IdPhotoPage(QWidget):
         input_row.addWidget(self.folder_button)
 
         output_row = QHBoxLayout()
+        output_row.setSpacing(10)
         self.output_edit = QLineEdit()
         self.output_edit.setPlaceholderText("默认输出到所选目录下的 idphoto_output")
         self.output_button = QPushButton("输出位置")
         output_row.addWidget(self.output_edit, 1)
         output_row.addWidget(self.output_button)
+        input_layout.addLayout(input_row)
+        input_layout.addLayout(output_row)
 
         settings_card = QFrame()
         settings_card.setObjectName("settingsCard")
@@ -108,9 +117,7 @@ class IdPhotoPage(QWidget):
         settings_layout.setContentsMargins(16, 14, 16, 16)
         settings_layout.setSpacing(10)
 
-        settings_title = QLabel("裁切参数")
-        settings_title.setObjectName("sectionTitle")
-        settings_layout.addWidget(settings_title)
+        settings_layout.addWidget(section_title("裁切参数"))
 
         self.preset_combo = QComboBox()
         for preset in STANDARD_PRESETS:
@@ -154,7 +161,7 @@ class IdPhotoPage(QWidget):
         preset_layout = QVBoxLayout(preset_group)
         preset_layout.setContentsMargins(12, 9, 12, 12)
         preset_layout.setSpacing(6)
-        preset_layout.addWidget(_field_label("证件照规格"))
+        preset_layout.addWidget(field_label("证件照规格"))
         preset_layout.addWidget(self.preset_combo)
 
         size_group = QFrame()
@@ -162,7 +169,7 @@ class IdPhotoPage(QWidget):
         size_layout = QVBoxLayout(size_group)
         size_layout.setContentsMargins(12, 9, 12, 12)
         size_layout.setSpacing(7)
-        size_layout.addWidget(_field_label("输出尺寸"))
+        size_layout.addWidget(field_label("输出尺寸"))
 
         mm_size_row = QHBoxLayout()
         mm_size_row.setSpacing(8)
@@ -183,7 +190,7 @@ class IdPhotoPage(QWidget):
         dpi_layout = QVBoxLayout(dpi_group)
         dpi_layout.setContentsMargins(12, 9, 12, 12)
         dpi_layout.setSpacing(7)
-        dpi_layout.addWidget(_field_label("输出 DPI"))
+        dpi_layout.addWidget(field_label("输出 DPI"))
         dpi_row = QHBoxLayout()
         dpi_row.setSpacing(8)
         dpi_row.addWidget(self.dpi_spin)
@@ -205,7 +212,7 @@ class IdPhotoPage(QWidget):
         quality_layout = QVBoxLayout(quality_group)
         quality_layout.setContentsMargins(12, 9, 12, 12)
         quality_layout.setSpacing(7)
-        quality_layout.addWidget(_field_label("输出质量"))
+        quality_layout.addWidget(field_label("输出质量"))
         quality_row = QHBoxLayout()
         quality_row.setSpacing(8)
         quality_row.addWidget(self.quality_spin)
@@ -225,7 +232,7 @@ class IdPhotoPage(QWidget):
         composition_layout = QVBoxLayout(composition_group)
         composition_layout.setContentsMargins(12, 9, 12, 12)
         composition_layout.setSpacing(7)
-        composition_layout.addWidget(_field_label("构图控制"))
+        composition_layout.addWidget(field_label("构图控制"))
         ratio_row = QHBoxLayout()
         ratio_row.setSpacing(8)
         ratio_row.addWidget(self.head_ratio_spin)
@@ -257,14 +264,13 @@ class IdPhotoPage(QWidget):
         self.log.setReadOnly(True)
         self.log.setPlaceholderText("处理日志")
 
-        layout.addWidget(header)
-        layout.addWidget(description)
-        layout.addLayout(input_row)
-        layout.addLayout(output_row)
+        layout.addWidget(hero)
+        layout.addWidget(input_card)
         layout.addWidget(settings_card)
         layout.addLayout(action_row)
         layout.addWidget(self.progress)
         layout.addWidget(self.status)
+        layout.addWidget(field_label("处理详情"))
         layout.addWidget(self.log, 1)
 
         self.file_button.clicked.connect(self._choose_file)
@@ -388,63 +394,19 @@ class IdPhotoPage(QWidget):
 
 def _stylesheet() -> str:
     return """
-        #pageTitle {
-            font-size: 28px;
-            font-weight: 800;
-            color: #101828;
-        }
-        #pageDescription, #statusText {
-            color: #667085;
-        }
-        #settingsCard {
-            background: #ffffff;
-            border: 1px solid #e4e7ec;
-            border-radius: 16px;
-        }
-        #sectionTitle {
-            font-size: 17px;
-            font-weight: 800;
-            color: #101828;
-        }
-        #settingGroup {
-            background: #f8fafc;
-            border: 1px solid #edf2f7;
-            border-radius: 14px;
-        }
         QComboBox, QSpinBox, QDoubleSpinBox {
-            background: #ffffff;
-            border: 1px solid #d0d5dd;
-            border-radius: 10px;
-            padding: 4px 9px;
-            font-size: 14px;
-        }
-        QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {
-            background: #f2f4f7;
-            color: #667085;
-        }
-        #fieldLabel {
-            color: #344054;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        #fieldHint {
-            color: #667085;
-            font-size: 13px;
+            min-height: 36px;
         }
         #pixelPreview {
             color: #2563eb;
-            font-weight: 700;
+            font-weight: 800;
             background: #eff6ff;
+            border: 1px solid #bfdbfe;
             border-radius: 10px;
             padding: 7px 10px;
         }
         #secondaryButton {
-            background: #eef4ff;
-            color: #2563eb;
             padding: 6px 11px;
-        }
-        #secondaryButton:hover {
-            background: #dbeafe;
         }
     """
 
@@ -453,9 +415,3 @@ def _preset_label(preset: CropPreset) -> str:
     if preset.width_mm is None or preset.height_mm is None:
         return f"{preset.name} - {preset.width}x{preset.height}px"
     return f"{preset.name} - {preset.width_mm:g}x{preset.height_mm:g} mm"
-
-
-def _field_label(text: str) -> QLabel:
-    label = QLabel(text)
-    label.setObjectName("fieldLabel")
-    return label

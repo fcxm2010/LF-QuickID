@@ -24,6 +24,7 @@ from lf_quickid.core.face_clusterer import cluster_faces
 from lf_quickid.core.face_detector import FaceAnalyzerUnavailable, InsightFaceAnalyzer
 from lf_quickid.core.image_scanner import scan_images
 from lf_quickid.core.models import FaceGroup
+from lf_quickid.ui.theme import build_hero, field_label, section_title
 
 
 class WorkerSignals(QObject):
@@ -77,28 +78,42 @@ class FaceGroupPage(QWidget):
         self._groups_layout: QGridLayout | None = None
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 26, 28, 26)
-        layout.setSpacing(18)
+        layout.setContentsMargins(30, 28, 30, 28)
+        layout.setSpacing(16)
 
-        header = QLabel("人脸分组")
-        header.setObjectName("pageTitle")
-        description = QLabel("选择照片目录后，程序会在本机识别人脸并把疑似同一个人聚合到一起。")
-        description.setObjectName("pageDescription")
+        hero = build_hero("人脸分组", "选择照片目录后，程序会在本机识别人脸，并把疑似同一个人聚合到一起。适合婚礼、活动、班级照片的快速整理。")
+
+        input_card = QFrame()
+        input_card.setObjectName("inputCard")
+        input_layout = QVBoxLayout(input_card)
+        input_layout.setContentsMargins(18, 16, 18, 18)
+        input_layout.setSpacing(10)
+        input_layout.addWidget(section_title("选择照片目录"))
 
         picker = QHBoxLayout()
+        picker.setSpacing(10)
         self.path_edit = QLineEdit()
         self.path_edit.setPlaceholderText("请选择包含照片的目录")
         self.browse_button = QPushButton("选择目录")
         self.start_button = QPushButton("开始识别")
         self.start_button.setEnabled(False)
+        self.start_button.setMinimumWidth(132)
         picker.addWidget(self.path_edit, 1)
         picker.addWidget(self.browse_button)
         picker.addWidget(self.start_button)
+        input_layout.addLayout(picker)
 
         self.progress = QProgressBar()
         self.progress.setValue(0)
         self.status = QLabel("等待选择目录")
         self.status.setObjectName("statusText")
+
+        result_panel = QFrame()
+        result_panel.setObjectName("resultPanel")
+        result_layout = QVBoxLayout(result_panel)
+        result_layout.setContentsMargins(16, 16, 16, 16)
+        result_layout.setSpacing(12)
+        result_layout.addWidget(section_title("识别结果"))
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -108,18 +123,19 @@ class FaceGroupPage(QWidget):
         self._groups_layout.setContentsMargins(0, 0, 0, 0)
         self._groups_layout.setSpacing(14)
         self.scroll.setWidget(self.results)
+        result_layout.addWidget(self.scroll, 1)
 
         self.log = QTextEdit()
         self.log.setReadOnly(True)
-        self.log.setFixedHeight(130)
+        self.log.setFixedHeight(118)
         self.log.setPlaceholderText("处理日志")
 
-        layout.addWidget(header)
-        layout.addWidget(description)
-        layout.addLayout(picker)
+        layout.addWidget(hero)
+        layout.addWidget(input_card)
         layout.addWidget(self.progress)
         layout.addWidget(self.status)
-        layout.addWidget(self.scroll, 1)
+        layout.addWidget(result_panel, 1)
+        layout.addWidget(field_label("处理详情"))
         layout.addWidget(self.log)
 
         self.browse_button.clicked.connect(self._choose_directory)
@@ -192,6 +208,7 @@ class FaceGroupPage(QWidget):
         label = QLabel(text)
         label.setAlignment(Qt.AlignCenter)
         label.setObjectName("emptyState")
+        label.setWordWrap(True)
         self._groups_layout.addWidget(label, 0, 0)
 
     def _render_groups(self, groups: list[FaceGroup]) -> None:
@@ -208,19 +225,19 @@ class _GroupCard(QFrame):
         super().__init__()
         self.setObjectName("groupCard")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(9)
 
         preview = QLabel()
         preview.setObjectName("facePreview")
-        preview.setFixedHeight(140)
+        preview.setFixedHeight(154)
         preview.setAlignment(Qt.AlignCenter)
 
         thumbnail = group.faces[0].thumbnail_jpeg if group.faces else None
         if thumbnail:
             pixmap = QPixmap()
             pixmap.loadFromData(thumbnail, "JPEG")
-            preview.setPixmap(pixmap.scaled(140, 140, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            preview.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
             preview.setText("无预览")
 
@@ -243,36 +260,23 @@ class _GroupCard(QFrame):
 
 def _stylesheet() -> str:
     return """
-        #pageTitle {
-            font-size: 28px;
-            font-weight: 800;
-            color: #101828;
-        }
-        #pageDescription, #statusText {
-            color: #667085;
-        }
         #groupCard {
-            background: #ffffff;
-            border: 1px solid #e4e7ec;
-            border-radius: 16px;
+            min-width: 220px;
         }
         #facePreview {
-            background: #f2f4f7;
-            border-radius: 12px;
-            color: #98a2b3;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #eff6ff, stop:1 #f8fafc);
+            border: 1px solid #dbeafe;
+            border-radius: 16px;
+            color: #94a3b8;
         }
         #groupTitle {
             font-size: 17px;
-            font-weight: 700;
+            font-weight: 850;
             color: #101828;
         }
         #groupMeta {
             color: #2563eb;
-            font-weight: 600;
-        }
-        #groupPaths {
-            color: #667085;
-            font-size: 12px;
+            font-weight: 750;
         }
         #emptyState {
             color: #667085;

@@ -3,7 +3,9 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
+from lf_quickid.ui.background_replace_page import BackgroundReplacePage
 from lf_quickid.ui.face_group_page import FaceGroupPage
+from lf_quickid.ui.id_photo_page import IdPhotoPage
 
 
 class MainWindow(QMainWindow):
@@ -38,8 +40,9 @@ class MainWindow(QMainWindow):
 
         nav = QListWidget()
         nav.setObjectName("nav")
-        item = QListWidgetItem("人脸分组")
-        nav.addItem(item)
+        nav.addItem(QListWidgetItem("人脸分组"))
+        nav.addItem(QListWidgetItem("证件照换背景"))
+        nav.addItem(QListWidgetItem("证件照裁切"))
         nav.setCurrentRow(0)
         nav.setFocusPolicy(Qt.NoFocus)
 
@@ -50,6 +53,9 @@ class MainWindow(QMainWindow):
 
         stack = QStackedWidget()
         stack.addWidget(FaceGroupPage())
+        stack.addWidget(BackgroundReplacePage())
+        stack.addWidget(IdPhotoPage())
+        nav.currentRowChanged.connect(stack.setCurrentIndex)
 
         layout.addWidget(sidebar)
         layout.addWidget(stack, 1)

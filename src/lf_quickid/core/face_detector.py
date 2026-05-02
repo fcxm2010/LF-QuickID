@@ -48,23 +48,39 @@ class InsightFaceAnalyzer:
             if embedding is None:
                 continue
 
-            x1, y1, x2, y2 = [int(round(value)) for value in face.bbox]
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(image.shape[1], x2)
-            y2 = min(image.shape[0], y2)
-            if x2 <= x1 or y2 <= y1:
+            bbox = _face_bbox(face, image.shape[1], image.shape[0])
+            if bbox is None:
                 continue
 
             records.append(
                 FaceRecord(
                     image_path=image_path,
-                    bbox=(x1, y1, x2, y2),
+                    bbox=bbox,
                     embedding=np.asarray(embedding, dtype=np.float32),
-                    thumbnail_jpeg=_crop_thumbnail(image, (x1, y1, x2, y2)),
+                    thumbnail_jpeg=_crop_thumbnail(image, bbox),
                 )
             )
         return records
+
+    def detect_faces(self, image_bgr: np.ndarray) -> list[tuple[int, int, int, int]]:
+        faces = self._app.get(image_bgr)
+        boxes: list[tuple[int, int, int, int]] = []
+        for face in faces:
+            bbox = _face_bbox(face, image_bgr.shape[1], image_bgr.shape[0])
+            if bbox is not None:
+                boxes.append(bbox)
+        return boxes
+
+
+def _face_bbox(face: object, image_width: int, image_height: int) -> tuple[int, int, int, int] | None:
+    x1, y1, x2, y2 = [int(round(value)) for value in face.bbox]
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(image_width, x2)
+    y2 = min(image_height, y2)
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return x1, y1, x2, y2
 
 
 def _crop_thumbnail(image_bgr: np.ndarray, bbox: tuple[int, int, int, int]) -> bytes | None:

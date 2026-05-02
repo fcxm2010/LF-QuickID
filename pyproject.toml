@@ -12,6 +12,7 @@ dependencies = [
   "opencv-python>=4.8",
   "insightface>=0.7",
   "onnxruntime>=1.16",
+  "rembg>=2.0",
 ]
 
 [project.optional-dependencies]

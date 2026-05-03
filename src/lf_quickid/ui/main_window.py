@@ -22,20 +22,20 @@ class MainWindow(QMainWindow):
 
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(248)
+        sidebar.setFixedWidth(224)
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(20, 24, 20, 20)
-        sidebar_layout.setSpacing(18)
+        sidebar_layout.setContentsMargins(14, 18, 14, 16)
+        sidebar_layout.setSpacing(12)
 
         brand = QFrame()
         brand.setObjectName("brand")
         brand_layout = QVBoxLayout(brand)
-        brand_layout.setContentsMargins(16, 16, 16, 16)
-        brand_layout.setSpacing(8)
+        brand_layout.setContentsMargins(8, 8, 8, 8)
+        brand_layout.setSpacing(6)
 
         logo = QLabel("LF")
         logo.setObjectName("logoMark")
-        logo.setFixedSize(44, 44)
+        logo.setFixedSize(34, 34)
         logo.setAlignment(Qt.AlignCenter)
 
         title = QLabel("LF QuickID")
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         nav.setFocusPolicy(Qt.NoFocus)
 
         sidebar_layout.addWidget(brand)
-        sidebar_layout.addSpacing(8)
+        sidebar_layout.addSpacing(6)
         sidebar_layout.addWidget(nav)
         sidebar_layout.addStretch()
 

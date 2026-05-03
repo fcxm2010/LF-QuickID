@@ -6,152 +6,153 @@ from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
 def app_stylesheet() -> str:
     return """
         QMainWindow, QWidget {
-            background: #eef2f7;
-            color: #172033;
-            font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
-            font-size: 14px;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            font-family: "-apple-system", "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+            font-size: 13px;
         }
         #sidebar {
-            background: #0a1020;
-            border-right: 1px solid #182235;
+            background: #ededf2;
+            border-right: 1px solid #d8d8de;
         }
         #brand {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #172554, stop:1 #312e81);
-            border: 1px solid #334155;
-            border-radius: 22px;
+            background: transparent;
+            border: none;
         }
         #logoMark {
             background: #ffffff;
-            color: #1d4ed8;
-            border-radius: 14px;
-            font-size: 19px;
+            color: #007aff;
+            border: 1px solid #d1d1d6;
+            border-radius: 10px;
+            font-size: 17px;
             font-weight: 900;
         }
         #appTitle {
             background: transparent;
-            color: #f8fafc;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: 0.3px;
+            color: #1d1d1f;
+            font-size: 20px;
+            font-weight: 800;
         }
         #appSubtitle, #sidebarHint {
             background: transparent;
-            color: #bac6d8;
+            color: #6e6e73;
             font-size: 12px;
-            line-height: 18px;
         }
         #nav {
             background: transparent;
             border: none;
-            color: #cbd5e1;
+            color: #2c2c2e;
             outline: none;
         }
         #nav::item {
-            padding: 13px 15px;
-            border-radius: 13px;
-            margin-bottom: 8px;
+            padding: 8px 11px;
+            border-radius: 8px;
+            margin-bottom: 4px;
         }
         #nav::item:hover {
-            background: #142033;
-            color: #ffffff;
+            background: #e1e1e7;
+            color: #1d1d1f;
         }
         #nav::item:selected {
-            background: #2563eb;
-            color: #ffffff;
+            background: #dcecff;
+            color: #0057d9;
+            font-weight: 700;
         }
         #workspace {
-            background: #eef2f7;
+            background: #f5f5f7;
         }
         #pageTitle {
             background: transparent;
-            color: #0f172a;
-            font-size: 30px;
-            font-weight: 900;
+            color: #1d1d1f;
+            font-size: 24px;
+            font-weight: 800;
         }
         #pageDescription, #statusText, #fieldHint, #groupPaths {
             background: transparent;
-            color: #667085;
+            color: #6e6e73;
         }
         #heroCard, #settingsCard, #inputCard, #resultPanel, #groupCard, #settingGroup {
             background: #ffffff;
-            border: 1px solid #dfe7f2;
-            border-radius: 20px;
+            border: 1px solid #dcdcde;
+            border-radius: 12px;
         }
         #heroCard {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #eff6ff);
+            background: transparent;
+            border: none;
         }
         #inputCard {
-            border: 1px dashed #a9b9d0;
+            border: 1px solid #dcdcde;
         }
         #sectionTitle {
             background: transparent;
-            color: #101828;
-            font-size: 17px;
-            font-weight: 850;
+            color: #1d1d1f;
+            font-size: 15px;
+            font-weight: 750;
         }
         #fieldLabel {
             background: transparent;
-            color: #344054;
-            font-size: 13px;
-            font-weight: 750;
+            color: #3a3a3c;
+            font-size: 12px;
+            font-weight: 650;
         }
         #settingGroup {
-            background: #f8fafc;
-            border-radius: 16px;
+            background: #f9f9fb;
+            border-radius: 10px;
         }
         QPushButton {
-            background: #2563eb;
+            background: #007aff;
             border: none;
             color: #ffffff;
-            padding: 10px 16px;
-            border-radius: 12px;
-            font-weight: 750;
+            padding: 7px 13px;
+            border-radius: 7px;
+            font-weight: 650;
         }
         QPushButton:hover {
-            background: #1d4ed8;
+            background: #0a84ff;
         }
         QPushButton:pressed {
-            background: #1e40af;
+            background: #0060df;
         }
         QPushButton:disabled {
-            background: #b9c2d0;
-            color: #f8fafc;
+            background: #d1d1d6;
+            color: #ffffff;
         }
         #secondaryButton {
-            background: #e8f0ff;
-            color: #1d4ed8;
+            background: #eeeeef;
+            color: #1d1d1f;
+            border: 1px solid #d1d1d6;
         }
         #secondaryButton:hover {
-            background: #dbeafe;
+            background: #e5e5ea;
         }
         QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {
             background: #ffffff;
-            border: 1px solid #cfd8e6;
-            border-radius: 12px;
-            padding: 8px 10px;
-            selection-background-color: #2563eb;
+            border: 1px solid #c7c7cc;
+            border-radius: 7px;
+            padding: 5px 8px;
+            selection-background-color: #007aff;
         }
         QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-            border: 1px solid #2563eb;
+            border: 1px solid #007aff;
         }
         QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled {
-            background: #f2f4f7;
-            color: #667085;
+            background: #f2f2f7;
+            color: #8e8e93;
         }
         QTextEdit {
-            color: #475467;
+            color: #3a3a3c;
         }
         QProgressBar {
             border: none;
-            border-radius: 8px;
-            background: #dbe3ef;
-            height: 12px;
+            border-radius: 4px;
+            background: #e5e5ea;
+            height: 8px;
             text-align: center;
             color: transparent;
         }
         QProgressBar::chunk {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #38bdf8, stop:1 #2563eb);
-            border-radius: 8px;
+            background: #007aff;
+            border-radius: 4px;
         }
         QScrollArea, QScrollArea QWidget {
             background: transparent;

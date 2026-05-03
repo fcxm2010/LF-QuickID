@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Qt, Signal, Slot
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -27,6 +28,7 @@ from lf_quickid.ui.theme import build_hero, field_label, section_title
 
 class CropWorkerSignals(QObject):
     progress = Signal(int, int, str)
+    preview = Signal(str)
     finished = Signal(int, int, str)
     failed = Signal(str)
     log = Signal(str)
@@ -65,6 +67,7 @@ class IdPhotoCropWorker(QRunnable):
                     continue
                 success_count += 1
                 self.signals.log.emit(f"完成 {image_path.name} -> {output_path.name}")
+                self.signals.preview.emit(str(output_path))
 
             self.signals.finished.emit(success_count, failed_count, str(self.output_dir))
         except FaceAnalyzerUnavailable as exc:
@@ -79,16 +82,16 @@ class IdPhotoPage(QWidget):
         self._thread_pool = QThreadPool.globalInstance()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 28, 30, 28)
-        layout.setSpacing(16)
+        layout.setContentsMargins(26, 22, 26, 22)
+        layout.setSpacing(12)
 
         hero = build_hero("证件照裁切", "选择图片或目录后，程序会在本机识别人脸位置，并按标准规格或自定义尺寸批量裁切、写入 DPI。")
 
         input_card = QFrame()
         input_card.setObjectName("inputCard")
         input_layout = QVBoxLayout(input_card)
-        input_layout.setContentsMargins(18, 16, 18, 18)
-        input_layout.setSpacing(10)
+        input_layout.setContentsMargins(14, 12, 14, 14)
+        input_layout.setSpacing(8)
         input_layout.addWidget(section_title("选择输入与输出"))
 
         input_row = QHBoxLayout()
@@ -114,8 +117,8 @@ class IdPhotoPage(QWidget):
         settings_card = QFrame()
         settings_card.setObjectName("settingsCard")
         settings_layout = QVBoxLayout(settings_card)
-        settings_layout.setContentsMargins(16, 14, 16, 16)
-        settings_layout.setSpacing(10)
+        settings_layout.setContentsMargins(14, 12, 14, 14)
+        settings_layout.setSpacing(8)
 
         settings_layout.addWidget(section_title("裁切参数"))
 
@@ -123,52 +126,52 @@ class IdPhotoPage(QWidget):
         for preset in STANDARD_PRESETS:
             self.preset_combo.addItem(_preset_label(preset), preset)
         self.preset_combo.addItem("自定义尺寸", None)
-        self.preset_combo.setMinimumHeight(36)
+        self.preset_combo.setMinimumHeight(30)
 
         self.width_mm_spin = QDoubleSpinBox()
         self.width_mm_spin.setRange(5, 300)
         self.width_mm_spin.setDecimals(1)
         self.width_mm_spin.setSuffix(" mm")
-        self.width_mm_spin.setMinimumHeight(36)
+        self.width_mm_spin.setMinimumHeight(30)
         self.width_mm_spin.setMinimumWidth(120)
         self.height_mm_spin = QDoubleSpinBox()
         self.height_mm_spin.setRange(5, 300)
         self.height_mm_spin.setDecimals(1)
         self.height_mm_spin.setSuffix(" mm")
-        self.height_mm_spin.setMinimumHeight(36)
+        self.height_mm_spin.setMinimumHeight(30)
         self.height_mm_spin.setMinimumWidth(120)
         self.dpi_spin = QSpinBox()
         self.dpi_spin.setRange(72, 1200)
         self.dpi_spin.setValue(300)
         self.dpi_spin.setSuffix(" DPI")
-        self.dpi_spin.setMinimumHeight(36)
+        self.dpi_spin.setMinimumHeight(30)
         self.dpi_spin.setMinimumWidth(118)
         self.pixel_label = QLabel()
         self.pixel_label.setObjectName("pixelPreview")
         self.head_ratio_spin = QSpinBox()
         self.head_ratio_spin.setRange(35, 80)
         self.head_ratio_spin.setSuffix("%")
-        self.head_ratio_spin.setMinimumHeight(36)
+        self.head_ratio_spin.setMinimumHeight(30)
         self.head_ratio_spin.setMinimumWidth(118)
         self.quality_spin = QSpinBox()
         self.quality_spin.setRange(1, 10)
         self.quality_spin.setValue(8)
-        self.quality_spin.setMinimumHeight(36)
+        self.quality_spin.setMinimumHeight(30)
         self.quality_spin.setMinimumWidth(96)
 
         preset_group = QFrame()
         preset_group.setObjectName("settingGroup")
         preset_layout = QVBoxLayout(preset_group)
-        preset_layout.setContentsMargins(12, 9, 12, 12)
-        preset_layout.setSpacing(6)
+        preset_layout.setContentsMargins(10, 8, 10, 10)
+        preset_layout.setSpacing(5)
         preset_layout.addWidget(field_label("证件照规格"))
         preset_layout.addWidget(self.preset_combo)
 
         size_group = QFrame()
         size_group.setObjectName("settingGroup")
         size_layout = QVBoxLayout(size_group)
-        size_layout.setContentsMargins(12, 9, 12, 12)
-        size_layout.setSpacing(7)
+        size_layout.setContentsMargins(10, 8, 10, 10)
+        size_layout.setSpacing(5)
         size_layout.addWidget(field_label("输出尺寸"))
 
         mm_size_row = QHBoxLayout()
@@ -182,14 +185,14 @@ class IdPhotoPage(QWidget):
         mm_size_row.addStretch()
         size_layout.addLayout(mm_size_row)
 
-        size_dpi_row = QHBoxLayout()
-        size_dpi_row.setSpacing(10)
+        preset_size_row = QHBoxLayout()
+        preset_size_row.setSpacing(10)
 
         dpi_group = QFrame()
         dpi_group.setObjectName("settingGroup")
         dpi_layout = QVBoxLayout(dpi_group)
-        dpi_layout.setContentsMargins(12, 9, 12, 12)
-        dpi_layout.setSpacing(7)
+        dpi_layout.setContentsMargins(10, 8, 10, 10)
+        dpi_layout.setSpacing(5)
         dpi_layout.addWidget(field_label("输出 DPI"))
         dpi_row = QHBoxLayout()
         dpi_row.setSpacing(8)
@@ -202,7 +205,7 @@ class IdPhotoPage(QWidget):
         for dpi in (300, 350, 600):
             button = QPushButton(f"{dpi} DPI")
             button.setObjectName("secondaryButton")
-            button.setMinimumHeight(32)
+            button.setMinimumHeight(30)
             button.clicked.connect(lambda checked=False, value=dpi: self.dpi_spin.setValue(value))
             quick_dpi_row.addWidget(button)
         dpi_layout.addLayout(quick_dpi_row)
@@ -210,68 +213,146 @@ class IdPhotoPage(QWidget):
         quality_group = QFrame()
         quality_group.setObjectName("settingGroup")
         quality_layout = QVBoxLayout(quality_group)
-        quality_layout.setContentsMargins(12, 9, 12, 12)
-        quality_layout.setSpacing(7)
+        quality_layout.setContentsMargins(10, 8, 10, 10)
+        quality_layout.setSpacing(5)
         quality_layout.addWidget(field_label("输出质量"))
+        quality_hint = QLabel("1-10")
+        quality_hint.setObjectName("fieldHint")
+        quality_layout.addWidget(quality_hint)
         quality_row = QHBoxLayout()
         quality_row.setSpacing(8)
         quality_row.addWidget(self.quality_spin)
-        quality_hint = QLabel("1 最小文件，10 最高画质，默认 8")
-        quality_hint.setObjectName("fieldHint")
-        quality_row.addWidget(quality_hint, 1)
+        quality_row.addStretch()
         quality_layout.addLayout(quality_row)
 
-        size_dpi_row.addWidget(size_group, 1)
-        size_dpi_row.addWidget(dpi_group, 1)
+        preset_size_row.addWidget(preset_group, 1)
+        preset_size_row.addWidget(size_group, 1)
 
-        quality_composition_row = QHBoxLayout()
-        quality_composition_row.setSpacing(10)
+        dpi_quality_composition_row = QHBoxLayout()
+        dpi_quality_composition_row.setSpacing(10)
 
         composition_group = QFrame()
         composition_group.setObjectName("settingGroup")
         composition_layout = QVBoxLayout(composition_group)
-        composition_layout.setContentsMargins(12, 9, 12, 12)
-        composition_layout.setSpacing(7)
+        composition_layout.setContentsMargins(10, 8, 10, 10)
+        composition_layout.setSpacing(5)
         composition_layout.addWidget(field_label("构图控制"))
+        ratio_hint = QLabel("头部占画面宽度")
+        ratio_hint.setObjectName("fieldHint")
+        composition_layout.addWidget(ratio_hint)
         ratio_row = QHBoxLayout()
         ratio_row.setSpacing(8)
         ratio_row.addWidget(self.head_ratio_spin)
-        ratio_hint = QLabel("头部约占画面宽度，默认适合常见证件照")
-        ratio_hint.setObjectName("fieldHint")
-        ratio_row.addWidget(ratio_hint, 1)
+        ratio_row.addStretch()
         composition_layout.addLayout(ratio_row)
 
-        quality_composition_row.addWidget(quality_group, 1)
-        quality_composition_row.addWidget(composition_group, 1)
+        dpi_quality_composition_row.addWidget(dpi_group, 2)
+        dpi_quality_composition_row.addWidget(quality_group, 1)
+        dpi_quality_composition_row.addWidget(composition_group, 1)
 
-        settings_layout.addWidget(preset_group)
-        settings_layout.addLayout(size_dpi_row)
-        settings_layout.addLayout(quality_composition_row)
+        settings_layout.addLayout(preset_size_row)
+        settings_layout.addLayout(dpi_quality_composition_row)
 
-        action_row = QHBoxLayout()
         self.start_button = QPushButton("开始裁切")
         self.start_button.setEnabled(False)
-        self.start_button.setMinimumHeight(40)
-        self.start_button.setMinimumWidth(136)
+        self.start_button.setMinimumHeight(34)
+        action_row = QHBoxLayout()
         action_row.addStretch()
         action_row.addWidget(self.start_button)
+        settings_layout.addLayout(action_row)
+
+        left_panel = QFrame()
+        left_panel.setObjectName("toolPanel")
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(14)
+        left_layout.addWidget(input_card)
+        left_layout.addWidget(settings_card)
+        left_layout.addStretch()
+
+        preview_card = QFrame()
+        preview_card.setObjectName("previewCard")
+        preview_layout = QVBoxLayout(preview_card)
+        preview_layout.setContentsMargins(16, 14, 16, 16)
+        preview_layout.setSpacing(12)
+        preview_layout.addWidget(section_title("输出预览"))
+
+        preview_stage = QFrame()
+        preview_stage.setObjectName("previewStage")
+        preview_stage_layout = QVBoxLayout(preview_stage)
+        preview_stage_layout.setContentsMargins(18, 22, 18, 22)
+        preview_stage_layout.setSpacing(10)
+
+        photo_placeholder = QFrame()
+        photo_placeholder.setObjectName("photoPlaceholder")
+        photo_placeholder.setFixedSize(142, 198)
+        photo_layout = QVBoxLayout(photo_placeholder)
+        photo_layout.setContentsMargins(16, 16, 16, 16)
+        photo_layout.setSpacing(8)
+        self.preview_image = QLabel("选择图片后显示预览")
+        self.preview_image.setObjectName("previewImage")
+        self.preview_image.setAlignment(Qt.AlignCenter)
+        self.preview_image.setWordWrap(True)
+        bust = QLabel("证件照裁切预览")
+        bust.setObjectName("previewCaption")
+        bust.setAlignment(Qt.AlignCenter)
+        bust.setWordWrap(True)
+        photo_layout.addWidget(self.preview_image, 1)
+        photo_layout.addWidget(bust)
+        preview_stage_layout.addWidget(photo_placeholder, 0, Qt.AlignHCenter)
+
+        self.summary_title = QLabel("当前规格")
+        self.summary_title.setObjectName("summaryTitle")
+        self.summary_size = QLabel()
+        self.summary_size.setObjectName("summaryLine")
+        self.summary_pixels = QLabel()
+        self.summary_pixels.setObjectName("summaryLine")
+        self.summary_quality = QLabel()
+        self.summary_quality.setObjectName("summaryLine")
+
+        summary_card = QFrame()
+        summary_card.setObjectName("summaryCard")
+        summary_layout = QVBoxLayout(summary_card)
+        summary_layout.setContentsMargins(14, 12, 14, 12)
+        summary_layout.setSpacing(6)
+        summary_layout.addWidget(self.summary_title)
+        summary_layout.addWidget(self.summary_size)
+        summary_layout.addWidget(self.summary_pixels)
+        summary_layout.addWidget(self.summary_quality)
+
+        preview_layout.addWidget(preview_stage)
+        preview_layout.addWidget(summary_card)
+        preview_layout.addStretch()
+
+        workbench = QHBoxLayout()
+        workbench.setSpacing(14)
+        workbench.addWidget(left_panel, 3)
+        workbench.addWidget(preview_card, 2)
+
+        progress_card = QFrame()
+        progress_card.setObjectName("progressCard")
+        progress_layout = QVBoxLayout(progress_card)
+        progress_layout.setContentsMargins(14, 12, 14, 14)
+        progress_layout.setSpacing(8)
+        progress_layout.addWidget(section_title("处理进度"))
 
         self.progress = QProgressBar()
         self.progress.setValue(0)
         self.status = QLabel("等待选择图片或目录")
         self.status.setObjectName("statusText")
+        progress_layout.addWidget(self.progress)
+        progress_layout.addWidget(self.status)
+
         self.log = QTextEdit()
         self.log.setReadOnly(True)
+        self.log.setFixedHeight(105)
         self.log.setPlaceholderText("处理日志")
 
         layout.addWidget(hero)
-        layout.addWidget(input_card)
-        layout.addWidget(settings_card)
-        layout.addLayout(action_row)
-        layout.addWidget(self.progress)
-        layout.addWidget(self.status)
+        layout.addLayout(workbench, 1)
+        layout.addWidget(progress_card)
         layout.addWidget(field_label("处理详情"))
-        layout.addWidget(self.log, 1)
+        layout.addWidget(self.log)
 
         self.file_button.clicked.connect(self._choose_file)
         self.folder_button.clicked.connect(self._choose_folder)
@@ -282,6 +363,8 @@ class IdPhotoPage(QWidget):
         self.width_mm_spin.valueChanged.connect(self._update_pixel_preview)
         self.height_mm_spin.valueChanged.connect(self._update_pixel_preview)
         self.dpi_spin.valueChanged.connect(self._update_pixel_preview)
+        self.quality_spin.valueChanged.connect(self._update_summary)
+        self.head_ratio_spin.valueChanged.connect(self._update_summary)
         self._apply_preset()
         self.setStyleSheet(_stylesheet())
 
@@ -290,12 +373,14 @@ class IdPhotoPage(QWidget):
         if file_path:
             self.input_edit.setText(file_path)
             self._set_default_output(Path(file_path))
+            self._update_input_preview(Path(file_path))
 
     def _choose_folder(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "选择照片目录")
         if directory:
             self.input_edit.setText(directory)
             self._set_default_output(Path(directory))
+            self._update_input_preview(Path(directory))
 
     def _choose_output(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "选择输出目录")
@@ -322,6 +407,18 @@ class IdPhotoPage(QWidget):
     def _update_pixel_preview(self) -> None:
         width, height = self._calculated_pixels()
         self.pixel_label.setText(f"自动计算：{width} x {height} px")
+        self._update_summary()
+
+    def _update_summary(self) -> None:
+        if not hasattr(self, "summary_title"):
+            return
+        preset = self.preset_combo.currentData()
+        preset_name = preset.name if preset is not None else "自定义尺寸"
+        width, height = self._calculated_pixels()
+        self.summary_title.setText(preset_name)
+        self.summary_size.setText(f"{self.width_mm_spin.value():g} x {self.height_mm_spin.value():g} mm")
+        self.summary_pixels.setText(f"{width} x {height} px · {self.dpi_spin.value()} DPI")
+        self.summary_quality.setText(f"质量 {self.quality_spin.value()} · 头部宽度 {self.head_ratio_spin.value()}%")
 
     def _update_start_state(self) -> None:
         self.start_button.setEnabled(bool(self.input_edit.text().strip()))
@@ -354,6 +451,7 @@ class IdPhotoPage(QWidget):
 
         worker = IdPhotoCropWorker(input_path, output_dir, preset)
         worker.signals.progress.connect(self._on_progress)
+        worker.signals.preview.connect(lambda path: self._set_preview_image(Path(path), "已生成输出预览"))
         worker.signals.log.connect(self._append_log)
         worker.signals.finished.connect(self._on_finished)
         worker.signals.failed.connect(self._on_failed)
@@ -372,6 +470,31 @@ class IdPhotoPage(QWidget):
         self.folder_button.setEnabled(enabled)
         self.output_button.setEnabled(enabled)
         self.start_button.setEnabled(enabled and bool(self.input_edit.text().strip()))
+
+    def _update_input_preview(self, input_path: Path) -> None:
+        try:
+            images = collect_input_images(input_path)
+        except Exception:
+            self._clear_preview("无法预览所选路径")
+            return
+        if not images:
+            self._clear_preview("未找到可预览图片")
+            return
+        self._set_preview_image(images[0], "输入图片预览")
+
+    def _set_preview_image(self, image_path: Path, caption: str) -> None:
+        pixmap = QPixmap(str(image_path))
+        if pixmap.isNull():
+            self._clear_preview("无法读取预览图片")
+            return
+        scaled = pixmap.scaled(self.preview_image.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.preview_image.setPixmap(scaled)
+        self.preview_image.setText("")
+        self.status.setText(caption)
+
+    def _clear_preview(self, text: str) -> None:
+        self.preview_image.clear()
+        self.preview_image.setText(text)
 
     def _on_progress(self, index: int, total: int, filename: str) -> None:
         self.progress.setMaximum(total)
@@ -394,16 +517,77 @@ class IdPhotoPage(QWidget):
 
 def _stylesheet() -> str:
     return """
+        #toolPanel {
+            background: transparent;
+            border: none;
+        }
+        #previewCard {
+            background: #ffffff;
+            border: 1px solid #dcdcde;
+            border-radius: 12px;
+        }
+        #progressCard {
+            background: #ffffff;
+            border: 1px solid #dcdcde;
+            border-radius: 12px;
+        }
+        #previewStage {
+            background: #f2f2f7;
+            border: 1px solid #e5e5ea;
+            border-radius: 10px;
+        }
+        #photoPlaceholder {
+            background: #ffffff;
+            border: 1px solid #c7c7cc;
+            border-radius: 8px;
+        }
+        #previewAvatar {
+            background: #f2f2f7;
+            border: 1px solid #d1d1d6;
+            border-radius: 36px;
+            color: #6e6e73;
+            font-weight: 650;
+        }
+        #previewImage {
+            background: transparent;
+            color: #8e8e93;
+            font-size: 12px;
+            border: none;
+        }
+        #previewCaption {
+            background: transparent;
+            color: #8e8e93;
+            font-size: 12px;
+        }
+        #summaryCard {
+            background: #f9f9fb;
+            border: 1px solid #e5e5ea;
+            border-radius: 10px;
+        }
+        #summaryTitle {
+            background: transparent;
+            color: #1d1d1f;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        #summaryLine {
+            background: transparent;
+            color: #6e6e73;
+            font-size: 13px;
+        }
+        #previewCard QPushButton {
+            font-size: 14px;
+        }
         QComboBox, QSpinBox, QDoubleSpinBox {
-            min-height: 36px;
+            min-height: 28px;
         }
         #pixelPreview {
-            color: #2563eb;
-            font-weight: 800;
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: 10px;
-            padding: 7px 10px;
+            color: #0057d9;
+            font-weight: 700;
+            background: #f2f7ff;
+            border: 1px solid #d7e8ff;
+            border-radius: 7px;
+            padding: 5px 8px;
         }
         #secondaryButton {
             padding: 6px 11px;

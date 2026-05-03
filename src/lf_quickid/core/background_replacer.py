@@ -16,6 +16,11 @@ BACKGROUND_COLORS: dict[str, tuple[str, tuple[int, int, int]]] = {
     "white": ("白底", (255, 255, 255)),
 }
 
+MATTING_MODES: dict[str, tuple[str, str]] = {
+    "fast": ("快速模式", "isnet-general-use"),
+    "quality": ("高质量人像", "birefnet-portrait"),
+}
+
 
 @dataclass(frozen=True)
 class BackgroundPreset:
@@ -30,6 +35,13 @@ class BackgroundReplaceResult:
     output: Path | None
     status: str
     message: str
+
+
+@dataclass(frozen=True)
+class MattingMode:
+    key: str
+    name: str
+    model_name: str
 
 
 class MattingUnavailable(RuntimeError):
@@ -64,6 +76,10 @@ class PortraitMattingEngine:
 
 def background_presets() -> tuple[BackgroundPreset, ...]:
     return tuple(BackgroundPreset(key, name, color) for key, (name, color) in BACKGROUND_COLORS.items())
+
+
+def matting_modes() -> tuple[MattingMode, ...]:
+    return tuple(MattingMode(key, name, model_name) for key, (name, model_name) in MATTING_MODES.items())
 
 
 def collect_input_images(path: Path) -> list[Path]:

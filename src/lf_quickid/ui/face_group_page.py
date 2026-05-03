@@ -264,19 +264,19 @@ def _stylesheet() -> str:
             min-width: 220px;
         }
         #facePreview {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #eff6ff, stop:1 #f8fafc);
-            border: 1px solid #dbeafe;
-            border-radius: 16px;
-            color: #94a3b8;
+            background: #f2f2f7;
+            border: 1px solid #e5e5ea;
+            border-radius: 10px;
+            color: #8e8e93;
         }
         #groupTitle {
-            font-size: 17px;
-            font-weight: 850;
-            color: #101828;
+            font-size: 15px;
+            font-weight: 750;
+            color: #1d1d1f;
         }
         #groupMeta {
-            color: #2563eb;
-            font-weight: 750;
+            color: #0057d9;
+            font-weight: 650;
         }
         #emptyState {
             color: #667085;

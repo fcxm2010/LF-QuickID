@@ -25,6 +25,7 @@ class FaceRecord:
 class FaceGroup:
     label: str
     faces: list[FaceRecord] = field(default_factory=list)
+    label_source: str = "fallback"
 
     @property
     def image_count(self) -> int:

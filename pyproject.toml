@@ -13,6 +13,9 @@ dependencies = [
   "insightface>=0.7",
   "onnxruntime>=1.16",
   "rembg>=2.0",
+  "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
+  "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+  "pyobjc-framework-Vision>=10.0; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]

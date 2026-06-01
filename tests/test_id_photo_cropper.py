@@ -51,9 +51,10 @@ def test_crop_box_places_eyes_near_first_third_with_normal_top_margin() -> None:
     eye_y, top_margin = _output_measurements(crop_box, face, subject_top, preset)
     assert abs(eye_y - preset.height / 3) <= 3
     assert abs(top_margin - mm_to_pixels(NORMAL_TOP_MARGIN_MM, preset.dpi)) <= 3
+    assert abs(_output_head_width(crop_box, preset) - preset.width * preset.head_ratio) <= 3
 
 
-def test_crop_box_expands_for_tall_hair_and_keeps_min_top_margin() -> None:
+def test_crop_box_keeps_head_width_for_tall_hair_and_avoids_cutting_top() -> None:
     preset = _preset()
     subject_top = 60
     image = _test_image(subject_top=subject_top, height=1600)
@@ -62,9 +63,10 @@ def test_crop_box_expands_for_tall_hair_and_keeps_min_top_margin() -> None:
     crop_box = _calculate_crop_box(image, face, preset)
 
     eye_y, top_margin = _output_measurements(crop_box, face, subject_top, preset)
-    assert abs(eye_y - preset.height / 3) <= 3
+    assert eye_y > preset.height / 3
     assert top_margin >= mm_to_pixels(MIN_TOP_MARGIN_MM, preset.dpi) - 1
     assert crop_box[1] <= subject_top
+    assert abs(_output_head_width(crop_box, preset) - preset.width * preset.head_ratio) <= 3
 
 
 def test_crop_box_falls_back_to_face_center_without_eye_keypoints() -> None:
@@ -101,3 +103,9 @@ def _output_measurements(
     eye_y = ((face.left_eye[1] + face.right_eye[1]) / 2 - top) * scale
     top_margin = (subject_top - top) * scale
     return eye_y, top_margin
+
+
+def _output_head_width(crop_box: tuple[int, int, int, int], preset: CropPreset) -> float:
+    left, _, right, _ = crop_box
+    crop_width = right - left
+    return 360 * preset.width / crop_width

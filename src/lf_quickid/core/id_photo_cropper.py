@@ -33,6 +33,21 @@ class CropResult:
     message: str
 
 
+@dataclass(frozen=True)
+class SubjectBounds:
+    top: float
+    left: float
+    right: float
+
+    @property
+    def width(self) -> float:
+        return max(1.0, self.right - self.left)
+
+    @property
+    def center_x(self) -> float:
+        return (self.left + self.right) / 2
+
+
 def mm_to_pixels(size_mm: float, dpi: int) -> int:
     return max(1, int(round(size_mm / 25.4 * dpi)))
 
@@ -140,25 +155,16 @@ def _calculate_crop_box(
     x1, y1, x2, y2 = face.bbox
     face_width = max(1, x2 - x1)
     face_height = max(1, y2 - y1)
-    crop_width, crop_height = _base_crop_size(face_width, face_height, preset, image_width, image_height)
 
     eye_center = _eye_center(face)
     face_center_x = eye_center[0] if eye_center is not None else (x1 + x2) / 2
-    subject_top = _estimate_subject_top(image_bgr, face.bbox, face_center_x, crop_width)
+    subject_bounds = _estimate_subject_bounds(image_bgr, face.bbox, face_center_x)
+    head_width = max(float(face_width), subject_bounds.width if subject_bounds is not None else 0.0)
+    crop_width, crop_height = _base_crop_size(head_width, face_height, preset, image_width, image_height)
 
-    if eye_center is not None and subject_top is not None:
-        crop_width, crop_height = _expand_crop_for_eye_line(
-            eye_y=eye_center[1],
-            subject_top=subject_top,
-            crop_width=crop_width,
-            crop_height=crop_height,
-            preset=preset,
-            image_width=image_width,
-            image_height=image_height,
-        )
-
-    left = int(round(face_center_x - crop_width / 2))
-    top = _calculate_crop_top(face, eye_center, subject_top, crop_height, preset)
+    crop_center_x = subject_bounds.center_x if subject_bounds is not None else face_center_x
+    left = int(round(crop_center_x - crop_width / 2))
+    top = _calculate_crop_top(face, eye_center, subject_bounds, crop_height, preset)
 
     left = min(max(0, left), max(0, image_width - crop_width))
     top = min(max(0, top), max(0, image_height - crop_height))
@@ -166,55 +172,21 @@ def _calculate_crop_box(
 
 
 def _base_crop_size(
-    face_width: int,
+    head_width: float,
     face_height: int,
     preset: CropPreset,
     image_width: int,
     image_height: int,
 ) -> tuple[int, int]:
-    crop_width = int(round(max(face_width, face_height) / preset.head_ratio))
+    crop_width = int(round(head_width / preset.head_ratio))
     crop_height = int(round(crop_width * preset.height / preset.width))
 
-    min_height_for_face = int(round(face_height / preset.head_ratio))
+    min_height_for_face = int(round(face_height * 1.08))
     if crop_height < min_height_for_face:
         crop_height = min_height_for_face
         crop_width = int(round(crop_height * preset.width / preset.height))
 
     return _fit_crop_size(crop_width, crop_height, preset, image_width, image_height)
-
-
-def _expand_crop_for_eye_line(
-    eye_y: float,
-    subject_top: float,
-    crop_width: int,
-    crop_height: int,
-    preset: CropPreset,
-    image_width: int,
-    image_height: int,
-) -> tuple[int, int]:
-    required_height = _required_crop_height_for_margin(
-        eye_y - subject_top,
-        mm_to_pixels(MIN_TOP_MARGIN_MM, preset.dpi),
-        preset.height,
-    )
-    if required_height <= crop_height:
-        return crop_width, crop_height
-
-    target_height = min(required_height, image_height)
-    target_width = int(round(target_height * preset.width / preset.height))
-    fitted_width, fitted_height = _fit_crop_size(target_width, target_height, preset, image_width, image_height)
-    if fitted_height <= crop_height:
-        return crop_width, crop_height
-    return fitted_width, fitted_height
-
-
-def _required_crop_height_for_margin(head_to_eye_distance: float, margin_px: int, output_height: int) -> int:
-    if head_to_eye_distance <= 0:
-        return 0
-    denominator = EYE_LINE_RATIO - margin_px / output_height
-    if denominator <= 0:
-        return 0
-    return int(np.ceil(head_to_eye_distance / denominator))
 
 
 def _fit_crop_size(
@@ -244,7 +216,7 @@ def _fit_crop_size(
 def _calculate_crop_top(
     face: DetectedFace,
     eye_center: tuple[float, float] | None,
-    subject_top: float | None,
+    subject_bounds: SubjectBounds | None,
     crop_height: int,
     preset: CropPreset,
 ) -> int:
@@ -254,11 +226,11 @@ def _calculate_crop_top(
         return int(round(face_center_y - crop_height * preset.face_center_y))
 
     top = eye_center[1] - crop_height * EYE_LINE_RATIO
-    if subject_top is not None:
+    if subject_bounds is not None:
         normal_margin = _output_pixels_to_source(mm_to_pixels(NORMAL_TOP_MARGIN_MM, preset.dpi), crop_height, preset)
         min_margin = _output_pixels_to_source(mm_to_pixels(MIN_TOP_MARGIN_MM, preset.dpi), crop_height, preset)
-        top = max(top, subject_top - normal_margin)
-        top = min(top, subject_top - min_margin)
+        top = max(top, subject_bounds.top - normal_margin)
+        top = min(top, subject_bounds.top - min_margin)
     return int(round(top))
 
 
@@ -274,20 +246,21 @@ def _eye_center(face: DetectedFace) -> tuple[float, float] | None:
     return (left_x + right_x) / 2, (left_y + right_y) / 2
 
 
-def _estimate_subject_top(
+def _estimate_subject_bounds(
     image_bgr: np.ndarray,
     face_box: tuple[int, int, int, int],
     center_x: float,
-    crop_width: int,
-) -> float | None:
+) -> SubjectBounds | None:
     x1, y1, x2, y2 = face_box
     image_height, image_width = image_bgr.shape[:2]
-    half_search_width = max((x2 - x1) * 0.9, crop_width * 0.45)
+    face_width = max(1, x2 - x1)
+    face_height = max(1, y2 - y1)
+    half_search_width = face_width * 1.05
     search_left = int(max(0, round(center_x - half_search_width)))
     search_right = int(min(image_width, round(center_x + half_search_width)))
-    search_bottom = int(min(image_height, max(y2, y1 + (y2 - y1) * 1.2)))
+    search_bottom = int(min(image_height, max(y2, y1 + face_height * 1.1)))
     if search_right <= search_left or search_bottom <= 0:
-        return _fallback_subject_top(face_box)
+        return _fallback_subject_bounds(face_box)
 
     background = _estimate_background_color(image_bgr)
     region = image_bgr[:search_bottom, search_left:search_right].astype(np.float32)
@@ -296,9 +269,25 @@ def _estimate_subject_top(
     row_counts = foreground.sum(axis=1)
     min_row_pixels = max(4, int((search_right - search_left) * 0.01))
     rows = np.flatnonzero(row_counts >= min_row_pixels)
-    if rows.size > 0:
-        return float(rows[0])
-    return _fallback_subject_top(face_box)
+    if rows.size == 0:
+        return _fallback_subject_bounds(face_box)
+
+    top = float(rows[0])
+    head_top = int(max(0, min(top, y1 - face_height * 0.25)))
+    head_bottom = int(min(search_bottom, y2))
+    if head_bottom <= head_top:
+        return _fallback_subject_bounds(face_box)
+
+    head_foreground = foreground[head_top:head_bottom]
+    column_counts = head_foreground.sum(axis=0)
+    min_column_pixels = max(3, int((head_bottom - head_top) * 0.05))
+    columns = np.flatnonzero(column_counts >= min_column_pixels)
+    if columns.size == 0:
+        return _fallback_subject_bounds(face_box)
+
+    left = float(search_left + columns[0])
+    right = float(search_left + columns[-1] + 1)
+    return SubjectBounds(top=top, left=min(left, float(x1)), right=max(right, float(x2)))
 
 
 def _estimate_background_color(image_bgr: np.ndarray) -> np.ndarray:
@@ -315,9 +304,10 @@ def _estimate_background_color(image_bgr: np.ndarray) -> np.ndarray:
     return np.median(samples.astype(np.float32), axis=0)
 
 
-def _fallback_subject_top(face_box: tuple[int, int, int, int]) -> float:
-    _, y1, _, y2 = face_box
-    return max(0.0, y1 - (y2 - y1) * 0.18)
+def _fallback_subject_bounds(face_box: tuple[int, int, int, int]) -> SubjectBounds:
+    x1, y1, x2, y2 = face_box
+    face_height = y2 - y1
+    return SubjectBounds(top=max(0.0, y1 - face_height * 0.18), left=float(x1), right=float(x2))
 
 
 def _bbox_area(bbox: tuple[int, int, int, int]) -> int:

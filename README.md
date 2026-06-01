@@ -50,6 +50,22 @@ lf-quickid
 python -m lf_quickid.main
 ```
 
+## 打包 macOS App
+
+```bash
+scripts/build_macos_app.sh
+```
+
+打包产物会生成到 `dist/LF QuickID.app`。脚本会使用 PyInstaller 构建、ad-hoc 签名，并执行 `codesign --verify --deep --strict`。
+
+打包后建议运行内置照片处理自检，确认 `.app` 内部的人脸识别、抠图、裁切、排版和分组导出依赖都能正常工作：
+
+```bash
+"dist/LF QuickID.app/Contents/MacOS/LF QuickID" --self-test --self-test-output /private/tmp/lf_quickid_app_selftest
+```
+
+输出 JSON 中 `"ok": true` 表示自检通过。
+
 ## 当前限制
 
 - 第一版优先支持 macOS 本地运行。

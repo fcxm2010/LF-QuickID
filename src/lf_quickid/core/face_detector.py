@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
@@ -8,20 +7,12 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from lf_quickid.core.image_io import read_image_bgr
 from lf_quickid.core.models import FaceRecord
 
 
 MODEL_NAME = "buffalo_l"
 MODEL_URL = f"https://github.com/deepinsight/insightface/releases/download/v0.7/{MODEL_NAME}.zip"
 MODEL_DIR = Path.home() / ".insightface" / "models" / MODEL_NAME
-
-
-@dataclass(frozen=True)
-class DetectedFace:
-    bbox: tuple[int, int, int, int]
-    left_eye: tuple[float, float] | None = None
-    right_eye: tuple[float, float] | None = None
 
 
 class FaceAnalyzerUnavailable(RuntimeError):
@@ -44,11 +35,11 @@ class InsightFaceAnalyzer:
             raise FaceAnalyzerUnavailable(_model_error_message(exc)) from exc
 
     def analyze_image(self, image_path: Path) -> list[FaceRecord]:
-        image = read_image_bgr(image_path)
+        image = cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
         if image is None:
             return []
 
-        faces = self._get_faces(image)
+        faces = self._app.get(image)
         records: list[FaceRecord] = []
         for face in faces:
             embedding = getattr(face, "normed_embedding", None)
@@ -72,29 +63,13 @@ class InsightFaceAnalyzer:
         return records
 
     def detect_faces(self, image_bgr: np.ndarray) -> list[tuple[int, int, int, int]]:
-        return [face.bbox for face in self.detect_face_details(image_bgr)]
-
-    def detect_face_details(self, image_bgr: np.ndarray) -> list[DetectedFace]:
-        if image_bgr is None or image_bgr.ndim != 3:
-            return []
-
-        faces = self._get_faces(image_bgr)
-        detected: list[DetectedFace] = []
+        faces = self._app.get(image_bgr)
+        boxes: list[tuple[int, int, int, int]] = []
         for face in faces:
             bbox = _face_bbox(face, image_bgr.shape[1], image_bgr.shape[0])
             if bbox is not None:
-                left_eye, right_eye = _face_eye_points(face, image_bgr.shape[1], image_bgr.shape[0])
-                detected.append(DetectedFace(bbox=bbox, left_eye=left_eye, right_eye=right_eye))
-        return detected
-
-    def _get_faces(self, image_bgr: np.ndarray) -> list[object]:
-        try:
-            faces = self._app.get(image_bgr)
-        except AttributeError as exc:
-            if "'NoneType' object has no attribute 'shape'" in str(exc):
-                return []
-            raise
-        return list(faces or [])
+                boxes.append(bbox)
+        return boxes
 
 
 def _face_bbox(face: object, image_width: int, image_height: int) -> tuple[int, int, int, int] | None:
@@ -106,32 +81,6 @@ def _face_bbox(face: object, image_width: int, image_height: int) -> tuple[int, 
     if x2 <= x1 or y2 <= y1:
         return None
     return x1, y1, x2, y2
-
-
-def _face_eye_points(
-    face: object,
-    image_width: int,
-    image_height: int,
-) -> tuple[tuple[float, float] | None, tuple[float, float] | None]:
-    keypoints = getattr(face, "kps", None)
-    if keypoints is None:
-        return None, None
-
-    points = np.asarray(keypoints, dtype=np.float32)
-    if points.ndim != 2 or points.shape[0] < 2 or points.shape[1] < 2:
-        return None, None
-
-    left_eye = _bounded_point(points[0], image_width, image_height)
-    right_eye = _bounded_point(points[1], image_width, image_height)
-    return left_eye, right_eye
-
-
-def _bounded_point(point: np.ndarray, image_width: int, image_height: int) -> tuple[float, float] | None:
-    x = float(point[0])
-    y = float(point[1])
-    if not np.isfinite(x) or not np.isfinite(y):
-        return None
-    return min(max(0.0, x), float(image_width)), min(max(0.0, y), float(image_height))
 
 
 def _crop_thumbnail(image_bgr: np.ndarray, bbox: tuple[int, int, int, int]) -> bytes | None:

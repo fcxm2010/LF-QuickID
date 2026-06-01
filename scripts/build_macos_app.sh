@@ -28,6 +28,7 @@ export PYINSTALLER_CONFIG_DIR
   --collect-all rembg \
   --collect-all pymatting \
   --collect-all sklearn \
+  --collect-data skimage \
   --hidden-import rembg.sessions.u2net \
   --hidden-import rembg.sessions.dis_general_use \
   --hidden-import rembg.sessions.birefnet_general \

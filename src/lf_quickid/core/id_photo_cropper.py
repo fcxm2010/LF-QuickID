@@ -82,6 +82,7 @@ def crop_id_photos(
     output_dir: Path,
     preset: CropPreset,
     analyzer: InsightFaceAnalyzer,
+    matting_engine: object | None = None,
 ) -> list[CropResult]:
     images = collect_input_images(input_path)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,7 +90,7 @@ def crop_id_photos(
     results: list[CropResult] = []
     for image_path in images:
         try:
-            output_path = crop_one_id_photo(image_path, output_dir, preset, analyzer)
+            output_path = crop_one_id_photo(image_path, output_dir, preset, analyzer, matting_engine)
         except Exception as exc:
             results.append(CropResult(image_path, None, "failed", str(exc)))
             continue
@@ -102,6 +103,7 @@ def crop_one_id_photo(
     output_dir: Path,
     preset: CropPreset,
     analyzer: InsightFaceAnalyzer,
+    matting_engine: object | None = None,
 ) -> Path:
     image = read_image_bgr(image_path)
     if image is None:
@@ -112,13 +114,17 @@ def crop_one_id_photo(
         raise ValueError("未检测到人脸")
 
     face = max(faces, key=lambda item: _bbox_area(item.bbox))
-    crop_box = _calculate_crop_box(image, face, preset)
-    x1, y1, x2, y2 = crop_box
-    cropped = image[y1:y2, x1:x2]
-    if cropped.size == 0:
-        raise ValueError("裁切区域无效")
+    if matting_engine is not None:
+        cropped = _crop_with_hivision_strategy(image, face, preset, matting_engine)
+    else:
+        crop_box = _calculate_crop_box(image, face, preset)
+        x1, y1, x2, y2 = crop_box
+        cropped = image[y1:y2, x1:x2]
+        if cropped.size == 0:
+            raise ValueError("裁切区域无效")
 
     resized = cv2.resize(cropped, (preset.width, preset.height), interpolation=cv2.INTER_AREA)
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_path = _unique_output_path(output_dir, image_path.stem, image_path.suffix.lower() or ".jpg")
     _save_with_dpi(resized, output_path, preset.dpi, preset.quality)
     return output_path
@@ -139,6 +145,159 @@ def _save_with_dpi(image_bgr: np.ndarray, output_path: Path, dpi: int, quality: 
 def _quality_to_encoder_value(quality: int) -> int:
     quality = min(10, max(1, quality))
     return 50 + quality * 5
+
+
+def _crop_with_hivision_strategy(
+    image_bgr: np.ndarray,
+    face: DetectedFace,
+    preset: CropPreset,
+    matting_engine: object,
+) -> np.ndarray:
+    alpha = matting_engine.alpha_mask(image_bgr)
+    if alpha.shape[:2] != image_bgr.shape[:2]:
+        alpha = cv2.resize(alpha, (image_bgr.shape[1], image_bgr.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+    rgba = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2BGRA)
+    rgba[:, :, 3] = _refine_crop_alpha(alpha)
+    cropped_rgba = _hivision_adjust_rgba(rgba, face, preset)
+    return _composite_rgba_on_background(cropped_rgba, _estimate_background_color(image_bgr))
+
+
+def _hivision_adjust_rgba(image_rgba: np.ndarray, face: DetectedFace, preset: CropPreset) -> np.ndarray:
+    # Adapted from HivisionIDPhotos' alpha-mask-based crop adjustment, with
+    # LF QuickID's head-width ratio kept as the primary scale constraint.
+    crop_width, crop_height, left, top = _hivision_crop_box(image_rgba, face, preset)
+    return _crop_rgba_with_padding(left, top, left + crop_width, top + crop_height, image_rgba)
+
+
+def _hivision_crop_box(
+    image_rgba: np.ndarray,
+    face: DetectedFace,
+    preset: CropPreset,
+) -> tuple[int, int, int, int]:
+    image_height, image_width = image_rgba.shape[:2]
+    x1, y1, x2, y2 = face.bbox
+    face_width = max(1, x2 - x1)
+    face_center_x = (x1 + x2) / 2
+    eye_center = _eye_center(face)
+    if eye_center is not None:
+        face_center_x = eye_center[0]
+
+    subject_bounds = _alpha_subject_bounds(image_rgba, face.bbox)
+    head_width = _estimated_head_width(face_width, subject_bounds)
+    crop_width = int(round(head_width / preset.head_ratio))
+    crop_height = int(round(crop_width * preset.height / preset.width))
+    crop_width = max(1, crop_width)
+    crop_height = max(1, crop_height)
+
+    left = int(round(face_center_x - crop_width / 2))
+    if subject_bounds is not None:
+        left = _shift_left_to_include_subject(left, crop_width, subject_bounds, image_width)
+    else:
+        left = _clamp_crop_origin(left, crop_width, image_width)
+
+    top = _calculate_crop_top(face, eye_center, subject_bounds, crop_height, preset)
+    top = _clamp_crop_origin(top, crop_height, image_height)
+
+    return max(1, crop_width), max(1, crop_height), int(left), int(top)
+
+
+def _alpha_subject_bounds(
+    image_rgba: np.ndarray,
+    face_box: tuple[int, int, int, int],
+    threshold: int = 24,
+) -> SubjectBounds | None:
+    rect = _largest_alpha_rect(image_rgba, threshold)
+    if rect is None:
+        return None
+
+    x, y, width, height = rect
+    _, face_y1, _, face_y2 = face_box
+    image_height = image_rgba.shape[0]
+    face_height = max(1, face_y2 - face_y1)
+    head_region_top = max(0, min(y, int(round(face_y1 - face_height * 0.45))))
+    head_region_bottom = min(image_height, max(face_y2, int(round(face_y1 + face_height * 0.95))))
+    if head_region_bottom <= head_region_top:
+        return SubjectBounds(top=float(y), left=float(x), right=float(x + width))
+
+    alpha = image_rgba[:, :, 3]
+    head_mask = alpha[head_region_top:head_region_bottom] > threshold
+    column_counts = head_mask.sum(axis=0)
+    min_column_pixels = max(3, int(round((head_region_bottom - head_region_top) * 0.035)))
+    columns = np.flatnonzero(column_counts >= min_column_pixels)
+    if columns.size == 0:
+        return SubjectBounds(top=float(y), left=float(x), right=float(x + width))
+
+    face_x1, _, face_x2, _ = face_box
+    left = min(float(columns[0]), float(face_x1))
+    right = max(float(columns[-1] + 1), float(face_x2))
+    return SubjectBounds(top=float(y), left=left, right=right)
+
+
+def _largest_alpha_rect(image_rgba: np.ndarray, threshold: int) -> tuple[int, int, int, int] | None:
+    if image_rgba.ndim != 3 or image_rgba.shape[2] != 4:
+        raise ValueError("裁切区域缺少透明通道")
+
+    alpha = image_rgba[:, :, 3]
+    _, mask = cv2.threshold(alpha, threshold, 255, cv2.THRESH_BINARY)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return None
+
+    contour = max(contours, key=cv2.contourArea)
+    return cv2.boundingRect(contour)
+
+
+def _shift_left_to_include_subject(
+    left: int,
+    crop_width: int,
+    subject_bounds: SubjectBounds,
+    image_width: int,
+) -> int:
+    min_left = int(round(subject_bounds.right - crop_width))
+    max_left = int(round(subject_bounds.left))
+    left = min(max(left, min_left), max_left)
+    return _clamp_crop_origin(left, crop_width, image_width)
+
+
+def _clamp_crop_origin(origin: int, crop_size: int, image_size: int) -> int:
+    min_origin = min(0, image_size - crop_size)
+    max_origin = max(0, image_size - crop_size)
+    return int(min(max_origin, max(min_origin, origin)))
+
+
+def _crop_rgba_with_padding(x1: int, y1: int, x2: int, y2: int, image_rgba: np.ndarray) -> np.ndarray:
+    crop_width = max(1, x2 - x1)
+    crop_height = max(1, y2 - y1)
+    result = np.zeros((crop_height, crop_width, 4), dtype=np.uint8)
+
+    source_x1 = max(0, x1)
+    source_y1 = max(0, y1)
+    source_x2 = min(image_rgba.shape[1], x2)
+    source_y2 = min(image_rgba.shape[0], y2)
+    if source_x2 <= source_x1 or source_y2 <= source_y1:
+        return result
+
+    target_x1 = source_x1 - x1
+    target_y1 = source_y1 - y1
+    target_x2 = target_x1 + (source_x2 - source_x1)
+    target_y2 = target_y1 + (source_y2 - source_y1)
+    result[target_y1:target_y2, target_x1:target_x2] = image_rgba[source_y1:source_y2, source_x1:source_x2]
+    return result
+
+
+def _refine_crop_alpha(alpha: np.ndarray) -> np.ndarray:
+    alpha = alpha.astype(np.uint8)
+    kernel = np.ones((3, 3), np.uint8)
+    alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel, iterations=1)
+    return cv2.GaussianBlur(alpha, (3, 3), 0)
+
+
+def _composite_rgba_on_background(image_rgba: np.ndarray, color_bgr: np.ndarray) -> np.ndarray:
+    bgr = image_rgba[:, :, :3].astype(np.float32)
+    alpha = (image_rgba[:, :, 3].astype(np.float32) / 255.0)[:, :, None]
+    background = np.full_like(bgr, color_bgr, dtype=np.float32)
+    return np.clip(bgr * alpha + background * (1.0 - alpha), 0, 255).astype(np.uint8)
 
 
 def _detect_faces_for_crop(analyzer: InsightFaceAnalyzer, image_bgr: np.ndarray) -> list[DetectedFace]:

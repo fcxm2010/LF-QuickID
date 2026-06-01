@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from lf_quickid.core.background_replacer import MattingUnavailable, PortraitMattingEngine
 from lf_quickid.core.face_detector import FaceAnalyzerUnavailable, InsightFaceAnalyzer
 from lf_quickid.core.id_photo_cropper import CropPreset, STANDARD_PRESETS, collect_input_images, crop_one_id_photo, mm_to_pixels
 from lf_quickid.ui.theme import build_hero, field_label, section_title
@@ -51,8 +52,9 @@ class IdPhotoCropWorker(QRunnable):
                 return
 
             self.output_dir.mkdir(parents=True, exist_ok=True)
-            self.signals.log.emit(f"找到 {len(images)} 张图片，正在加载本地人脸模型...")
+            self.signals.log.emit(f"找到 {len(images)} 张图片，正在加载本地人脸模型和人像抠图模型...")
             analyzer = InsightFaceAnalyzer()
+            matting_engine = PortraitMattingEngine()
             total = len(images)
             success_count = 0
             failed_count = 0
@@ -60,7 +62,13 @@ class IdPhotoCropWorker(QRunnable):
             for index, image_path in enumerate(images, start=1):
                 self.signals.progress.emit(index, total, image_path.name)
                 try:
-                    output_path = crop_one_id_photo(image_path, self.output_dir, self.preset, analyzer)
+                    output_path = crop_one_id_photo(
+                        image_path,
+                        self.output_dir,
+                        self.preset,
+                        analyzer,
+                        matting_engine,
+                    )
                 except Exception as exc:
                     failed_count += 1
                     self.signals.log.emit(f"失败 {image_path.name}: {exc}")
@@ -70,7 +78,7 @@ class IdPhotoCropWorker(QRunnable):
                 self.signals.preview.emit(str(output_path))
 
             self.signals.finished.emit(success_count, failed_count, str(self.output_dir))
-        except FaceAnalyzerUnavailable as exc:
+        except (FaceAnalyzerUnavailable, MattingUnavailable) as exc:
             self.signals.failed.emit(str(exc))
         except Exception as exc:
             self.signals.failed.emit(f"处理失败: {exc}")

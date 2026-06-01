@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from PIL import Image
 
 from lf_quickid.core.face_detector import DetectedFace, InsightFaceAnalyzer
 from lf_quickid.core.id_photo_cropper import (
@@ -9,6 +10,8 @@ from lf_quickid.core.id_photo_cropper import (
     NORMAL_TOP_MARGIN_MM,
     CropPreset,
     _calculate_crop_box,
+    _hivision_crop_box,
+    crop_one_id_photo,
     mm_to_pixels,
 )
 
@@ -107,6 +110,50 @@ def test_crop_box_falls_back_to_face_center_without_eye_keypoints() -> None:
     assert crop_box[1] == 125
 
 
+def test_hivision_crop_uses_alpha_bounds_without_losing_head_width_control() -> None:
+    preset = _preset()
+    image = _test_image(subject_top=140, height=1400, width=1000)
+    rgba = _rgba_with_alpha_subject(image, subject_top=140)
+    face = DetectedFace(bbox=(400, 220, 600, 570), left_eye=(455, 305), right_eye=(545, 305))
+
+    crop_width, crop_height, left, top = _hivision_crop_box(rgba, face, preset)
+
+    output_subject_width = SUBJECT_WIDTH * preset.width / crop_width
+    output_eye_y = (305 - top) * preset.height / crop_height
+    output_top_margin = (140 - top) * preset.height / crop_height
+    assert abs(output_subject_width - preset.width * preset.head_ratio) <= 3
+    assert abs(output_eye_y - preset.height / 3) <= 8
+    assert abs(output_top_margin - mm_to_pixels(NORMAL_TOP_MARGIN_MM, preset.dpi)) <= 4
+    assert left <= 500 - SUBJECT_WIDTH // 2
+
+
+def test_crop_one_id_photo_uses_hivision_path_with_fake_matting(tmp_path) -> None:
+    preset = _preset()
+    image = _test_image(subject_top=140, height=1400, width=1000)
+    input_path = tmp_path / "input.jpg"
+    Image.fromarray(image[:, :, ::-1]).save(input_path)
+    output_dir = tmp_path / "out"
+    face = DetectedFace(bbox=(400, 220, 600, 570), left_eye=(455, 305), right_eye=(545, 305))
+
+    output_path = crop_one_id_photo(input_path, output_dir, preset, _FakeAnalyzer(face), _FakeMatting(subject_top=140))
+
+    with Image.open(output_path) as saved:
+        assert saved.size == (preset.width, preset.height)
+        assert saved.info["dpi"][0] == preset.dpi
+
+
+def test_crop_one_id_photo_hivision_path_handles_missing_keypoints(tmp_path) -> None:
+    preset = _preset()
+    image = _test_image(subject_top=140, height=1400, width=1000)
+    input_path = tmp_path / "input.jpg"
+    Image.fromarray(image[:, :, ::-1]).save(input_path)
+    face = DetectedFace(bbox=(400, 220, 600, 570))
+
+    output_path = crop_one_id_photo(input_path, tmp_path / "out", preset, _FakeAnalyzer(face), _FakeMatting(subject_top=140))
+
+    assert output_path.exists()
+
+
 def _preset() -> CropPreset:
     return CropPreset("test", 344, 482, 0.58, 0.43, dpi=300)
 
@@ -117,6 +164,14 @@ def _test_image(subject_top: int, height: int = 1400, width: int = 1000) -> np.n
     half_width = SUBJECT_WIDTH // 2
     image[subject_top:1050, center_x - half_width : center_x + half_width] = (30, 30, 30)
     return image
+
+
+def _rgba_with_alpha_subject(image_bgr: np.ndarray, subject_top: int) -> np.ndarray:
+    rgba = np.dstack((image_bgr, np.zeros(image_bgr.shape[:2], dtype=np.uint8)))
+    center_x = image_bgr.shape[1] // 2
+    half_width = SUBJECT_WIDTH // 2
+    rgba[subject_top:1050, center_x - half_width : center_x + half_width, 3] = 255
+    return rgba
 
 
 def _output_measurements(
@@ -143,3 +198,19 @@ def _output_subject_width(crop_box: tuple[int, int, int, int], subject_width: in
 
 def _crop_width(crop_box: tuple[int, int, int, int]) -> int:
     return crop_box[2] - crop_box[0]
+
+
+class _FakeAnalyzer:
+    def __init__(self, face: DetectedFace) -> None:
+        self.face = face
+
+    def detect_face_details(self, image_bgr: np.ndarray) -> list[DetectedFace]:
+        return [self.face]
+
+
+class _FakeMatting:
+    def __init__(self, subject_top: int) -> None:
+        self.subject_top = subject_top
+
+    def alpha_mask(self, image_bgr: np.ndarray) -> np.ndarray:
+        return _rgba_with_alpha_subject(image_bgr, self.subject_top)[:, :, 3]

@@ -23,16 +23,16 @@ class MainWindow(QMainWindow):
 
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(224)
+        sidebar.setFixedWidth(236)
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(14, 18, 14, 16)
-        sidebar_layout.setSpacing(12)
+        sidebar_layout.setContentsMargins(16, 18, 16, 16)
+        sidebar_layout.setSpacing(14)
 
         brand = QFrame()
         brand.setObjectName("brand")
         brand_layout = QVBoxLayout(brand)
-        brand_layout.setContentsMargins(8, 8, 8, 8)
-        brand_layout.setSpacing(6)
+        brand_layout.setContentsMargins(12, 12, 12, 12)
+        brand_layout.setSpacing(7)
 
         logo = QLabel("LF")
         logo.setObjectName("logoMark")
@@ -48,6 +48,9 @@ class MainWindow(QMainWindow):
         brand_layout.addWidget(title)
         brand_layout.addWidget(subtitle)
 
+        nav_label = QLabel("工作流")
+        nav_label.setObjectName("sidebarSectionLabel")
+
         nav = QListWidget()
         nav.setObjectName("nav")
         nav.addItem(QListWidgetItem("人脸分组"))
@@ -58,7 +61,8 @@ class MainWindow(QMainWindow):
         nav.setFocusPolicy(Qt.NoFocus)
 
         sidebar_layout.addWidget(brand)
-        sidebar_layout.addSpacing(6)
+        sidebar_layout.addSpacing(4)
+        sidebar_layout.addWidget(nav_label)
         sidebar_layout.addWidget(nav)
         sidebar_layout.addStretch()
 

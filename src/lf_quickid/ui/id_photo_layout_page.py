@@ -195,7 +195,10 @@ class IdPhotoLayoutPage(QWidget):
         photo_size_row = QHBoxLayout()
         photo_size_row.setSpacing(8)
         photo_size_row.addWidget(self.photo_width_spin)
-        photo_size_row.addWidget(QLabel("x"))
+        photo_multiply_label = QLabel("x")
+        photo_multiply_label.setObjectName("fieldHint")
+        photo_multiply_label.setAlignment(Qt.AlignCenter)
+        photo_size_row.addWidget(photo_multiply_label)
         photo_size_row.addWidget(self.photo_height_spin)
         spec_layout.addLayout(photo_size_row)
 
@@ -209,7 +212,10 @@ class IdPhotoLayoutPage(QWidget):
         paper_size_row = QHBoxLayout()
         paper_size_row.setSpacing(8)
         paper_size_row.addWidget(self.paper_width_spin)
-        paper_size_row.addWidget(QLabel("x"))
+        paper_multiply_label = QLabel("x")
+        paper_multiply_label.setObjectName("fieldHint")
+        paper_multiply_label.setAlignment(Qt.AlignCenter)
+        paper_size_row.addWidget(paper_multiply_label)
         paper_size_row.addWidget(self.paper_height_spin)
         paper_layout.addLayout(paper_size_row)
 
@@ -433,10 +439,10 @@ def _stylesheet() -> str:
             min-height: 28px;
         }
         #layoutSummary {
-            background: #f2f7ff;
-            border: 1px solid #d7e8ff;
+            background: #eef5ff;
+            border: 1px solid #d7e4f7;
             border-radius: 8px;
-            color: #0057d9;
+            color: #1d4f91;
             font-weight: 700;
             padding: 8px 10px;
         }

@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from lf_quickid.core.image_io import read_image_bgr
 from lf_quickid.core.image_scanner import SUPPORTED_IMAGE_EXTENSIONS, scan_images
 
 
@@ -97,7 +98,7 @@ def replace_background_one(
     engine: PortraitMattingEngine,
     quality: int = 95,
 ) -> Path:
-    image = cv2.imdecode(np.fromfile(str(image_path), dtype=np.uint8), cv2.IMREAD_COLOR)
+    image = read_image_bgr(image_path)
     if image is None:
         raise ValueError("无法读取图片")
 

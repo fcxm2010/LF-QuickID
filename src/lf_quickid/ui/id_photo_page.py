@@ -90,16 +90,16 @@ class IdPhotoPage(QWidget):
         self._thread_pool = QThreadPool.globalInstance()
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(26, 22, 26, 22)
-        layout.setSpacing(12)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(14)
 
         hero = build_hero("证件照裁切", "选择图片或目录后，程序会在本机识别人脸位置，并按标准规格或自定义尺寸批量裁切、写入 DPI。")
 
         input_card = QFrame()
         input_card.setObjectName("inputCard")
         input_layout = QVBoxLayout(input_card)
-        input_layout.setContentsMargins(14, 12, 14, 14)
-        input_layout.setSpacing(8)
+        input_layout.setContentsMargins(16, 14, 16, 16)
+        input_layout.setSpacing(10)
         input_layout.addWidget(section_title("选择输入与输出"))
 
         input_row = QHBoxLayout()
@@ -125,8 +125,8 @@ class IdPhotoPage(QWidget):
         settings_card = QFrame()
         settings_card.setObjectName("settingsCard")
         settings_layout = QVBoxLayout(settings_card)
-        settings_layout.setContentsMargins(14, 12, 14, 14)
-        settings_layout.setSpacing(8)
+        settings_layout.setContentsMargins(16, 14, 16, 16)
+        settings_layout.setSpacing(10)
 
         settings_layout.addWidget(section_title("裁切参数"))
 
@@ -531,22 +531,22 @@ def _stylesheet() -> str:
         }
         #previewCard {
             background: #ffffff;
-            border: 1px solid #dcdcde;
-            border-radius: 12px;
+            border: 1px solid #dfe5ee;
+            border-radius: 10px;
         }
         #progressCard {
             background: #ffffff;
-            border: 1px solid #dcdcde;
-            border-radius: 12px;
+            border: 1px solid #dfe5ee;
+            border-radius: 10px;
         }
         #previewStage {
-            background: #f2f2f7;
-            border: 1px solid #e5e5ea;
-            border-radius: 10px;
+            background: #f3f6fa;
+            border: 1px solid #dfe5ee;
+            border-radius: 9px;
         }
         #photoPlaceholder {
             background: #ffffff;
-            border: 1px solid #c7c7cc;
+            border: 1px solid #cfd6e2;
             border-radius: 8px;
         }
         #previewAvatar {
@@ -558,29 +558,29 @@ def _stylesheet() -> str:
         }
         #previewImage {
             background: transparent;
-            color: #8e8e93;
+            color: #7b8494;
             font-size: 12px;
             border: none;
         }
         #previewCaption {
             background: transparent;
-            color: #8e8e93;
+            color: #7b8494;
             font-size: 12px;
         }
         #summaryCard {
-            background: #f9f9fb;
-            border: 1px solid #e5e5ea;
-            border-radius: 10px;
+            background: #f8fafc;
+            border: 1px solid #dfe5ee;
+            border-radius: 9px;
         }
         #summaryTitle {
             background: transparent;
-            color: #1d1d1f;
+            color: #111827;
             font-size: 16px;
             font-weight: 800;
         }
         #summaryLine {
             background: transparent;
-            color: #6e6e73;
+            color: #667085;
             font-size: 13px;
         }
         #previewCard QPushButton {
@@ -590,11 +590,11 @@ def _stylesheet() -> str:
             min-height: 28px;
         }
         #pixelPreview {
-            color: #0057d9;
+            color: #1d4f91;
             font-weight: 700;
-            background: #f2f7ff;
-            border: 1px solid #d7e8ff;
-            border-radius: 7px;
+            background: #eef5ff;
+            border: 1px solid #d7e4f7;
+            border-radius: 6px;
             padding: 5px 8px;
         }
         #secondaryButton {

@@ -348,8 +348,8 @@ class BackgroundReplacePage(QWidget):
         self.color_preview.setStyleSheet(
             "#colorPreview {"
             f"background: {_css_color_from_bgr(color_bgr)};"
-            "border: 1px solid #98a2b3;"
-            "border-radius: 10px;"
+            "border: 1px solid #cfd6e2;"
+            "border-radius: 8px;"
             "}"
         )
 
@@ -381,6 +381,9 @@ def _stylesheet() -> str:
     return """
         QComboBox, QSpinBox {
             min-height: 28px;
+        }
+        #colorPreview {
+            min-width: 38px;
         }
         #secondaryButton {
             padding: 6px 11px;

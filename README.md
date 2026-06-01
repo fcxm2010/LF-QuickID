@@ -39,6 +39,8 @@ unzip -o "$HOME/.insightface/models/buffalo_l.zip" -d "$HOME/.insightface/models
 ## 启动
 
 ```bash
+cd "/Users/lf/Documents/lf_program/LF-QuickID-证件照处理"
+source .venv/bin/activate
 lf-quickid
 ```
 

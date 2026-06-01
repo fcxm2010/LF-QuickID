@@ -56,6 +56,7 @@ EYE_LINE_RATIO = 1 / 3
 NORMAL_TOP_MARGIN_MM = 3.0
 MIN_TOP_MARGIN_MM = 1.5
 FOREGROUND_DIFF_THRESHOLD = 35.0
+MAX_HEAD_WIDTH_FROM_FACE = 1.45
 
 
 STANDARD_PRESETS: tuple[CropPreset, ...] = (
@@ -154,13 +155,12 @@ def _calculate_crop_box(
     image_height, image_width = image_bgr.shape[:2]
     x1, y1, x2, y2 = face.bbox
     face_width = max(1, x2 - x1)
-    face_height = max(1, y2 - y1)
 
     eye_center = _eye_center(face)
     face_center_x = eye_center[0] if eye_center is not None else (x1 + x2) / 2
     subject_bounds = _estimate_subject_bounds(image_bgr, face.bbox, face_center_x)
-    head_width = max(float(face_width), subject_bounds.width if subject_bounds is not None else 0.0)
-    crop_width, crop_height = _base_crop_size(head_width, face_height, preset, image_width, image_height)
+    head_width = _estimated_head_width(face_width, subject_bounds)
+    crop_width, crop_height = _base_crop_size(head_width, preset, image_width, image_height)
 
     crop_center_x = subject_bounds.center_x if subject_bounds is not None else face_center_x
     left = int(round(crop_center_x - crop_width / 2))
@@ -173,7 +173,6 @@ def _calculate_crop_box(
 
 def _base_crop_size(
     head_width: float,
-    face_height: int,
     preset: CropPreset,
     image_width: int,
     image_height: int,
@@ -181,12 +180,13 @@ def _base_crop_size(
     crop_width = int(round(head_width / preset.head_ratio))
     crop_height = int(round(crop_width * preset.height / preset.width))
 
-    min_height_for_face = int(round(face_height * 1.08))
-    if crop_height < min_height_for_face:
-        crop_height = min_height_for_face
-        crop_width = int(round(crop_height * preset.width / preset.height))
-
     return _fit_crop_size(crop_width, crop_height, preset, image_width, image_height)
+
+
+def _estimated_head_width(face_width: int, subject_bounds: SubjectBounds | None) -> float:
+    if subject_bounds is None:
+        return float(face_width)
+    return min(max(float(face_width), subject_bounds.width), face_width * MAX_HEAD_WIDTH_FROM_FACE)
 
 
 def _fit_crop_size(
